@@ -1,0 +1,100 @@
+[gd_scene load_steps=17 format=4 uid="uid://hm6l6r6hsjkj"]
+
+[ext_resource type="Texture2D" uid="uid://jfaef10iku33" path="res://wall.png" id="1_8ilu5"]
+[ext_resource type="Script" path="res://main.gd" id="1_xd2qi"]
+[ext_resource type="Script" path="res://player.gd" id="2_5rlqg"]
+[ext_resource type="Script" path="res://PerspectiveView.gd" id="2_225xr"]
+[ext_resource type="Texture2D" uid="uid://c61j8g7mm506t" path="res://brickwall.png" id="3_044fn"]
+[ext_resource type="Texture2D" uid="uid://dachk8qf0xhti" path="res://player.png" id="3_80l5t"]
+[ext_resource type="Script" path="res://camera.gd" id="6_do2kc"]
+[ext_resource type="Script" path="res://fps.gd" id="7_bnyc4"]
+[ext_resource type="Script" path="res://keycommands.gd" id="7_fi6wx"]
+[ext_resource type="Script" path="res://camera_params.gd" id="7_lov1b"]
+[ext_resource type="Script" path="res://ProjectionPlane.gd" id="8_xuihi"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_kdt2a"]
+resource_name = "testwall"
+texture = ExtResource("1_8ilu5")
+texture_region_size = Vector2i(64, 64)
+0:0/0 = 0
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-32, -32, 32, -32, 32, 32, -32, 32)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_h40sm"]
+texture = ExtResource("3_044fn")
+texture_region_size = Vector2i(64, 64)
+0:0/0 = 0
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-32, -32, 32, -32, 32, 32, -32, 32)
+
+[sub_resource type="TileSet" id="TileSet_j7hfd"]
+tile_size = Vector2i(64, 64)
+occlusion_layer_0/light_mask = 1
+physics_layer_0/collision_layer = 1
+sources/1 = SubResource("TileSetAtlasSource_kdt2a")
+sources/2 = SubResource("TileSetAtlasSource_h40sm")
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_jo1lk"]
+radius = 27.0185
+
+[sub_resource type="Resource" id="Resource_xowf1"]
+script = ExtResource("7_lov1b")
+window_size = Vector2i(640, 480)
+offset = Vector2(0, 0)
+zoom = 1.0
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_xd2qi")
+
+[node name="keycommands" type="Node" parent="." node_paths=PackedStringArray("ui")]
+script = ExtResource("7_fi6wx")
+ui = NodePath("../CanvasLayer")
+
+[node name="Map" type="TileMapLayer" parent="."]
+use_parent_material = true
+tile_map_data = PackedByteArray("AAAAAAAAAQAAAAAAAAABAAAAAQAAAAAAAAACAAAAAQAAAAAAAAADAAAAAQAAAAAAAAAEAAAAAQAAAAAAAAAFAAAAAQAAAAAAAAAGAAAAAQAAAAAAAAAHAAAAAQAAAAAAAAAIAAAAAQAAAAAAAAAJAAAAAQAAAAAAAAAKAAAAAQAAAAAAAAALAAAAAQAAAAAAAAAMAAAAAQAAAAAAAAANAAAAAQAAAAAAAAAOAAAAAQAAAAAAAAAPAAAAAQAAAAAAAAAQAAAAAQAAAAAAAAARAAAAAQAAAAAAAAASAAAAAQAAAAAAAAATAAAAAQAAAAAAAAAUAAAAAQAAAAAAAAAVAAAAAQAAAAAAAAAWAAAAAQAAAAAAAAAXAAAAAQAAAAAAAAAAAAEAAQAAAAAAAAAAAAIAAQAAAAAAAAAAAAMAAQAAAAAAAAAAAAQAAQAAAAAAAAAAAAUAAQAAAAAAAAAFABAAAQAAAAAAAAAGABAAAQAAAAAAAAAHABAAAQAAAAAAAAAIABAAAQAAAAAAAAAOABAAAQAAAAAAAAAPABAAAQAAAAAAAAAQABAAAQAAAAAAAAARABAAAQAAAAAAAAASABAAAQAAAAAAAAATABAAAQAAAAAAAAAUABAAAQAAAAAAAAAVABAAAQAAAAAAAAAWABAAAQAAAAAAAAAXABAAAQAAAAAAAAAYABAAAQAAAAAAAAAZABAAAQAAAAAAAAAaABAAAQAAAAAAAAAbABAAAQAAAAAAAAAcABAAAQAAAAAAAAAcAA8AAQAAAAAAAAAcAA4AAQAAAAAAAAAcAA0AAQAAAAAAAAAcAAwAAQAAAAAAAAAcAAsAAQAAAAAAAAAcAAoAAQAAAAAAAAAcAAkAAQAAAAAAAAAcAAgAAQAAAAAAAAAcAAcAAQAAAAAAAAAcAAYAAQAAAAAAAAAcAAUAAQAAAAAAAAAcAAQAAQAAAAAAAAAcAAMAAQAAAAAAAAAcAAIAAQAAAAAAAAAcAAEAAQAAAAAAAAAcAAAAAQAAAAAAAAAbAAAAAQAAAAAAAAAaAAAAAQAAAAAAAAAZAAAAAQAAAAAAAAAYAAAAAQAAAAAAAAABAAUAAQAAAAAAAAACAAUAAQAAAAAAAAADAAUAAQAAAAAAAAAEAAUAAQAAAAAAAAAFAAUAAQAAAAAAAAAOAAsAAQAAAAAAAAANAAsAAQAAAAAAAAAMAAsAAQAAAAAAAAAMAAoAAQAAAAAAAAAMAAkAAQAAAAAAAAAMAAgAAQAAAAAAAAAMAAcAAQAAAAAAAAANAAcAAQAAAAAAAAAOAAcAAQAAAAAAAAAPAAcAAQAAAAAAAAAQAAcAAQAAAAAAAAAQAAgAAQAAAAAAAAAQAAkAAQAAAAAAAAAQAAoAAQAAAAAAAAAQAAsAAQAAAAAAAAAUAAYAAQAAAAAAAAAUAAcAAQAAAAAAAAAUAAgAAQAAAAAAAAAVAAgAAQAAAAAAAAAWAAgAAQAAAAAAAAAXAAgAAQAAAAAAAAAYAAgAAQAAAAAAAAAZAAgAAQAAAAAAAAAZAAkAAQAAAAAAAAAZAAoAAQAAAAAAAAAZAAsAAQAAAAAAAAAVAAwAAQAAAAAAAAAXAA4AAQAAAAAAAAAZAAcAAQAAAAAAAAAZAAYAAQAAAAAAAAAaAAYAAQAAAAAAAAAbAAYAAQAAAAAAAAAOAAEAAQAAAAAAAAAOAAIAAQAAAAAAAAAOAAMAAQAAAAAAAAAJABAAAQAAAAAAAAAKABAAAQAAAAAAAAALABAAAQAAAAAAAAAMABAAAQAAAAAAAAANABAAAQAAAAAAAAALAAwAAgAAAAAAAAAMAAwAAgAAAAAAAAANAAwAAgAAAAAAAAAOAAwAAgAAAAAAAAALAAsAAgAAAAAAAAALAAoAAgAAAAAAAAALAAkAAgAAAAAAAAALAAgAAgAAAAAAAAALAAcAAgAAAAAAAAALAAYAAgAAAAAAAAAMAAYAAgAAAAAAAAANAAYAAgAAAAAAAAAOAAYAAgAAAAAAAAAPAAYAAgAAAAAAAAAQAAYAAgAAAAAAAAARAAYAAgAAAAAAAAARAAcAAgAAAAAAAAARAAgAAgAAAAAAAAARAAkAAgAAAAAAAAARAAoAAgAAAAAAAAARAAsAAgAAAAAAAAARAAwAAgAAAAAAAAAQAAwAAgAAAAAAAAAUAAkAAgAAAAAAAAAVAAkAAgAAAAAAAAAWAAkAAgAAAAAAAAAXAAkAAgAAAAAAAAAYAAkAAgAAAAAAAAAYAAoAAgAAAAAAAAAYAAsAAgAAAAAAAAAFAAYAAgAAAAAAAAAEAAYAAgAAAAAAAAADAAYAAgAAAAAAAAACAAYAAgAAAAAAAAABAAYAAgAAAAAAAAAAAAYAAgAAAAAAAAAAAAcAAgAAAAAAAAAAAAgAAgAAAAAAAAAAAAkAAgAAAAAAAAAAAAoAAgAAAAAAAAAAAAsAAgAAAAAAAAAAAAwAAgAAAAAAAAAAAA0AAgAAAAAAAAAAAA4AAgAAAAAAAAAAAA8AAgAAAAAAAAABABAAAgAAAAAAAAACABAAAgAAAAAAAAADABAAAgAAAAAAAAAAABAAAgAAAAAAAAAEABAAAgAAAAAAAAAFAA0AAgAAAAAAAAAFAAoAAgAAAAAAAAAFAAkAAgAAAAAAAAAFAA4AAgAAAAAAAAAFAAgAAgAAAAAAAAAFAAcAAgAAAAAAAAAFAA8AAgAAAAAAAAAFAAsAAgAAAAAAAAA=")
+tile_set = SubResource("TileSet_j7hfd")
+
+[node name="Player" type="CharacterBody2D" parent="."]
+position = Vector2(96, 96)
+script = ExtResource("2_5rlqg")
+metadata/_edit_group_ = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
+shape = SubResource("CircleShape2D_jo1lk")
+
+[node name="Sprite" type="Sprite2D" parent="Player"]
+texture = ExtResource("3_80l5t")
+
+[node name="CamOverhead" type="Camera2D" parent="."]
+position = Vector2(96, 96)
+script = ExtResource("6_do2kc")
+camera_params = SubResource("Resource_xowf1")
+
+[node name="PerspectiveView" type="Node2D" parent="." node_paths=PackedStringArray("player", "map")]
+script = ExtResource("2_225xr")
+player = NodePath("../Player")
+map = NodePath("../Map")
+
+[node name="ProjectionPlane" type="Node2D" parent="."]
+visible = false
+script = ExtResource("8_xuihi")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Control" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Label" type="Label" parent="CanvasLayer/Control"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -1.0
+offset_bottom = 23.0
+grow_horizontal = 0
+script = ExtResource("7_bnyc4")

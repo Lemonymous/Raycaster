@@ -1,7 +1,7 @@
 extends Node2D
 
 var screenwidth := 640
-var screenheight := 480
+var screenheight := 360
 
 
 func _ready() -> void:

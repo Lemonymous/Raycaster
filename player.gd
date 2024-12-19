@@ -2,7 +2,8 @@ class_name Player
 extends CharacterBody2D
 
 var speed := 400.0  # move speed in pixels/sec
-var rotation_speed := 2.0  # turning speed in radians/sec
+var rotation_speed := 3.0  # turning speed in radians/sec
+var mouse_sensitivity := 0.005
 
 # ANGLE MATH
 var eyeheight := 32.0 # Default should be half of tile dimension.
@@ -13,34 +14,37 @@ var dirX:float = 1.0
 var dirY:float = 0.0
 var planeX:float = 0.0
 var planeY:float = 0.66
+var mouse_prev := Vector2.ZERO
+
+
+func _ready() -> void:
+	#Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func _input(event: InputEvent) -> void:
+	var mouse_event := event as InputEventMouseMotion
+	if mouse_event:
+		if mouse_event.relative.x != 0.0:
+			var rotation_direction := mouse_event.relative.x * mouse_sensitivity
+			var new_dir := Vector2(dirX, dirY).rotated(rotation_direction)
+			var new_plane := Vector2(planeX, planeY).rotated(rotation_direction)
+			dirX = new_dir.x
+			dirY = new_dir.y
+			planeX = new_plane.x
+			planeY = new_plane.y
+			
+			# Ensure player movement direction and camera is in perfect sync
+			transform.x = new_dir
+			transform.y = Vector2(-dirY, dirX)
+
 
 func _physics_process(delta):
 	# Pick up the input.
 	var move_input = Input.get_axis("move_backward", "move_forward")
 	var strafe_input = Input.get_axis("strafe_left", "strafe_right")
-	var rotation_direction = Input.get_axis("turn_left", "turn_right")
+	
 	# Make the transformations.
-	
-	# Change the direction and plane vectors.
-	# FOR VECTOR MATH METHOD
-	# THIS IS UNDER TESTING; DO NOT REMOVE THIS OR THE DIRVEC/PLANEVEC NODES
-	if rotation_direction < 0: # Turning Left
-		var oldDirX:float = dirX
-		dirX = dirX * cos(deg_to_rad(-rotation_speed)) - dirY * sin(deg_to_rad(-rotation_speed))
-		dirY = oldDirX * sin(deg_to_rad(-rotation_speed)) + dirY * cos(deg_to_rad(-rotation_speed))
-		var oldPlaneX:float = planeX
-		planeX = planeX * cos(deg_to_rad(-rotation_speed)) - planeY * sin(deg_to_rad(-rotation_speed))
-		planeY = oldPlaneX * sin(deg_to_rad(-rotation_speed)) + planeY * cos(deg_to_rad(-rotation_speed))
-	elif rotation_direction > 0: # Turning Right
-		var oldDirX:float = dirX
-		dirX = dirX * cos(deg_to_rad(rotation_speed)) - dirY * sin(deg_to_rad(rotation_speed))
-		dirY = oldDirX * sin(deg_to_rad(rotation_speed)) + dirY * cos(deg_to_rad(rotation_speed))
-		var oldPlaneX:float = planeX
-		planeX = planeX * cos(deg_to_rad(rotation_speed)) - planeY * sin(deg_to_rad(rotation_speed))
-		planeY = oldPlaneX * sin(deg_to_rad(rotation_speed)) + planeY * cos(deg_to_rad(rotation_speed))
-	
-	# Ensure player movement direction and camera is in perfect sync
-	self.rotation = atan2(dirY, dirX)
 	self.velocity = self.transform.x * move_input * speed + self.transform.y * strafe_input * speed
 	
 	# Complete the movement.

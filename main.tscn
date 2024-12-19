@@ -3,14 +3,14 @@
 [ext_resource type="Texture2D" uid="uid://jfaef10iku33" path="res://wall.png" id="1_8ilu5"]
 [ext_resource type="Script" path="res://main.gd" id="1_xd2qi"]
 [ext_resource type="Script" path="res://player.gd" id="2_5rlqg"]
-[ext_resource type="Script" path="res://PerspectiveView.gd" id="2_225xr"]
 [ext_resource type="Texture2D" uid="uid://c61j8g7mm506t" path="res://brickwall.png" id="3_044fn"]
 [ext_resource type="Texture2D" uid="uid://dachk8qf0xhti" path="res://player.png" id="3_80l5t"]
 [ext_resource type="Script" path="res://camera.gd" id="6_do2kc"]
 [ext_resource type="Script" path="res://fps.gd" id="7_bnyc4"]
 [ext_resource type="Script" path="res://keycommands.gd" id="7_fi6wx"]
 [ext_resource type="Script" path="res://camera_params.gd" id="7_lov1b"]
-[ext_resource type="Script" path="res://ProjectionPlane.gd" id="8_xuihi"]
+[ext_resource type="Script" path="res://floor&ceiling.gd" id="9_sl0mc"]
+[ext_resource type="Script" path="res://PerspectiveView.cs" id="10_ip38n"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_kdt2a"]
 resource_name = "testwall"
@@ -69,14 +69,15 @@ position = Vector2(96, 96)
 script = ExtResource("6_do2kc")
 camera_params = SubResource("Resource_xowf1")
 
-[node name="PerspectiveView" type="Node2D" parent="." node_paths=PackedStringArray("player", "map")]
-script = ExtResource("2_225xr")
+[node name="Floor&Ceiling" type="Node2D" parent="."]
+script = ExtResource("9_sl0mc")
+
+[node name="PerspectiveView" type="Sprite2D" parent="." node_paths=PackedStringArray("player", "map", "floorAndCeiling")]
+centered = false
+script = ExtResource("10_ip38n")
 player = NodePath("../Player")
 map = NodePath("../Map")
-
-[node name="ProjectionPlane" type="Node2D" parent="."]
-visible = false
-script = ExtResource("8_xuihi")
+floorAndCeiling = NodePath("../Floor&Ceiling")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 

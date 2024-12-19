@@ -1,10 +1,13 @@
-extends Node2D
+extends Sprite2D
 # VECTOR MATH METHOD
 # Based on: https://lodev.org/cgtutor/raycasting.html
 
 # Screen dimensions where the walls will be drawn.
 var screenwidth := 640
 var screenheight := 400
+var screenbuffer : PackedByteArray
+var texturebuffers : Dictionary
+var image : Image
 
 @export var player : Player
 @export var map : TileMapLayer
@@ -14,27 +17,75 @@ var screenheight := 400
 @onready var mapheight = map.get_used_rect().size.y
 
 
-func _draw():
-	draw_rect(Rect2(0, 0, 640, 200), Color.SKY_BLUE) # CEILING (TBD: TEXT
-	draw_rect(Rect2(0, 200, 640, 200), Color.GRAY) # FLOOR
-	renderWalls()
+func _ready() -> void:
+	# Fix the perspective view to top left of screen.
+	global_position.x = -screenwidth / 2
+	global_position.y = -screenheight / 2
+	
+	var bytes : PackedByteArray
+	bytes.resize(screenwidth * screenheight * 4)
+	screenbuffer.resize(screenwidth * screenheight * 4)
+	
+	## Image method
+	#texture = ImageTexture.new()
+	#image = Image.create_from_data(screenwidth, screenheight, false, Image.FORMAT_RGBA8, bytes)
+	#var image_texture = texture as ImageTexture
+	#image_texture.set_image(image)
+	
+	## Rendering device method
+	texture = Texture2DRD.new()
+	var rd := RenderingServer.get_rendering_device()
+	var texture_format := RDTextureFormat.new()
+	texture_format.texture_type = RenderingDevice.TEXTURE_TYPE_2D
+	texture_format.format = RenderingDevice.DATA_FORMAT_R8G8B8A8_UNORM
+	texture_format.width = screenwidth
+	texture_format.height = screenheight
+	texture_format.usage_bits =\
+		+ RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT\
+		+ RenderingDevice.TEXTURE_USAGE_STORAGE_BIT\
+		+ RenderingDevice.TEXTURE_USAGE_CAN_COPY_TO_BIT\
+		+ RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT
+	
+	# Create texture on the GPU
+	var texture_rid := rd.texture_create(texture_format, RDTextureView.new(), [bytes])
+	
+	# Read Sprite texture as Texture2DRD
+	var texture2DRD := texture as Texture2DRD
+	
+	# Link texture on GPU to Texture2DRD
+	texture2DRD.texture_rd_rid = texture_rid
 
 
 func _process(delta):
 	# Fix the perspective view to top left of screen.
-	self.global_position = Vector2.ZERO - get_canvas_transform().origin
-	# Update screen with drawing.
-	queue_redraw()
+	renderWalls()
 
 
-var atlas_textures: Dictionary
-func make_or_get_atlas_texture(source: TileSetAtlasSource, tile_id: int) -> AtlasTexture:
-	if !atlas_textures.has(tile_id):
-		var atlas_texture := AtlasTexture.new()
-		atlas_texture.atlas = source.texture
-		atlas_textures[tile_id] = atlas_texture
+func to_color_array(bytes: PackedByteArray) -> PackedVector3Array:
+	var colors : PackedVector3Array
+	colors.resize(bytes.size() / 3)
 	
-	return atlas_textures[tile_id]
+	for i in range(0, bytes.size(), 3):
+		# Extract the RGBA values from the array
+		var r = bytes[i]
+		var g = bytes[i + 1]
+		var b = bytes[i + 2]
+		
+		# Create a Color object and convert it to a PackedColor
+		# Normalize to 0-1 range
+		var color = Vector3(r, g, b)
+		colors[i/3] = color
+	
+	return colors
+
+
+func get_texture_data(tile_id: int) -> PackedVector3Array:
+	if !texturebuffers.has(tile_id):
+		var source := map.tile_set.get_source(tile_id) as TileSetAtlasSource
+		var bytes := source.texture.get_image().get_data()
+		texturebuffers[tile_id] = to_color_array(bytes)
+	
+	return texturebuffers[tile_id]
 
 
 func renderWalls():
@@ -43,10 +94,9 @@ func renderWalls():
 	var posX:float = player.global_position.x / 64.0
 	var posY:float = player.global_position.y / 64.0
 	var canvasItem:RID = get_canvas_item()
-	var column_width := 1.0
 	
 	# Start running through every X column on the screen.
-	for x in range(0, screenwidth, column_width):
+	for x in range(0, screenwidth):
 		
 		# Set up perspective camera plane and raycast direction.
 		var cameraX:float = 2.0 * x / float(screenwidth) - 1.0
@@ -70,8 +120,8 @@ func renderWalls():
 		var stepY:int
 		
 		# Detect if a tile is hit, which side, and which type.
+		var hit := 0
 		var side:int
-		var hit_tile:Vector2
 		
 		# Determine ray direction to set defaults.
 		if rayDirX < 0: # RAY POINTING LEFT
@@ -88,7 +138,7 @@ func renderWalls():
 			sideDistY = (mapY + 1.0 - posY) * deltaDistY
 			
 		# DDA Algorithm
-		while !hit_tile: # While there has been no detected hit...
+		while hit == 0: # While there has been no detected hit...
 			# Iterate and increment the ray until a tile is found or it goes out of bounds.
 			if sideDistX < sideDistY:
 				sideDistX += deltaDistX
@@ -100,7 +150,7 @@ func renderWalls():
 				side = 1
 			# Test if tile has a wall.
 			if map.get_cell_source_id(Vector2(mapX, mapY)) != -1:
-				hit_tile = Vector2(mapX, mapY)
+				hit = 1
 			# OUT-OF-BOUNDS CATCH
 			# This is for testing only, so the game doesn't get stuck in an infinite loop.
 			# What we really should do is make it so if it goes past the map boundaries,
@@ -123,23 +173,16 @@ func renderWalls():
 		
 		# Map the coordinates on the rendering surface to draw the walls on.
 		var drawStart:int = (-lineHeight / 2) + (screenheight / 2) # Start point.
-		var drawEnd:int = (lineHeight / 2) + (screenheight / 2) # End point.
-		
-		# Clip and limit column height to viewrect
-		var drawStartSrc := 0.0
-		var drawEndSrc := 64.0
 		if drawStart < 0:
-			var fraction_clipped := -float(drawStart) / float(lineHeight)
-			drawStartSrc = fraction_clipped * 64.0
 			drawStart = 0
+		var drawEnd:int = (lineHeight / 2) + (screenheight / 2) # End point.
 		if drawEnd >= screenheight:
-			var fraction_clipped := float(drawEnd - screenheight) / float(lineHeight)
-			drawEndSrc = (1.0 - fraction_clipped) * 64.0
 			drawEnd = screenheight - 1
 		
 		# Locate the X coordinate of the tile sprite to slice from.
+		var texHeight := 64
 		var texWidth := 64
-		var texNum := hit_tile
+		var texNum := Vector2(mapX, mapY)
 		var wallX:float
 		if side == 0:
 			wallX = posY + perpWallDist * rayDirY
@@ -152,16 +195,37 @@ func renderWalls():
 		if side == 1 and rayDirY < 0:
 			texX = texWidth - texX - 1
 		
+		var source_id = map.get_cell_source_id(texNum)
+		var tex := get_texture_data(source_id)
 		
-		var source_id = map.get_cell_source_id(hit_tile)
-		var source:TileSetAtlasSource = map.tile_set.get_source(source_id) as TileSetAtlasSource
-		var atlas_coord = map.get_cell_atlas_coords(hit_tile)
-		var atlas_texture := make_or_get_atlas_texture(source, source_id)
-		atlas_texture.region = Rect2(texX, drawStartSrc, 1, drawEndSrc - drawStartSrc)
-		#atlas_texture.region = Rect2(texX, 0, 1, 64)
-		var texture_rid := atlas_texture.get_rid()
-		var rectColumn := Rect2(x, drawStart, column_width, drawEnd - drawStart)
-		var color := Color.WHITE
-		if side == 1:
-			color = Color(0.5, 0.5, 0.5, 1.0)
-		RenderingServer.canvas_item_add_texture_rect_region(canvasItem, rectColumn, texture_rid, atlas_texture.region, color)
+		# How much to increase the texture coordinate per screen pixel
+		var step := 1.0 * texHeight / lineHeight
+		# Starting texture coordinate
+		var texPos := (drawStart - screenheight / 2 + lineHeight / 2) * step
+		for y in range(drawStart, drawEnd):
+			# Cast the texture coordinate to integer, and mask with (texHeight - 1) in case of overflow
+			var texY := int(texPos) & (texHeight - 1)
+			texPos += step
+			var texIndex := texX + texY * texHeight
+			var color := tex[texIndex]
+			# make color darker for y-sides: R, G and B byte each divided through two with a "shift" and an "and"
+			if side == 1:
+				color *= 0.5
+			
+			var screenIndex := (x + y * 640) * 4
+			screenbuffer[screenIndex] = color.x
+			screenbuffer[screenIndex+1] = color.y
+			screenbuffer[screenIndex+2] = color.z
+			screenbuffer[screenIndex+3] = 255.0
+	
+	## Image method
+	#image.set_data(screenwidth, screenheight, false, Image.FORMAT_RGBA8, screenbuffer)
+	#var image_texture = texture as ImageTexture
+	#image_texture.update(image)
+	#screenbuffer.fill(0)
+	
+	## Rendering device method
+	var rd := RenderingServer.get_rendering_device()
+	var texture2DRD := texture as Texture2DRD
+	rd.texture_update(texture2DRD.texture_rd_rid, 0, screenbuffer)
+	screenbuffer.fill(0)

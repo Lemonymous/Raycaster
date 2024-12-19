@@ -195,10 +195,10 @@ public partial class PerspectiveView : Godot.Sprite2D
 				{
 					hit = true;
 				}
-				else if (mapX > mapwidth || mapY > mapheight || mapX < 0 || mapY < 0)
-				{
-					break;
-				}
+				// else if (mapX > mapwidth || mapY > mapheight || mapX < 0 || mapY < 0)
+				// {
+				// 	break;
+				// }
 			}
 
 			// The distance between the camera plane point and the wall collision point.

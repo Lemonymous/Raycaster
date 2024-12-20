@@ -9,7 +9,8 @@ public partial class PerspectiveView : Godot.Sprite2D
 	private int screenwidth;
 	private int screenheight;
 	private byte[] screenbuffer;
-	private Godot.Collections.Dictionary<int, Vector3[]> texturebuffers = new Godot.Collections.Dictionary<int, Vector3[]>();
+	private byte[][] texturebuffers;
+	private int[] remap_id_2_index;
 	private Image image;
 
 	[Export] public CharacterBody2D player;
@@ -22,6 +23,32 @@ public partial class PerspectiveView : Godot.Sprite2D
 
 	public override void _Ready()
 	{
+		// Arrange textures as bytes
+		int source_count = map.TileSet.GetSourceCount();
+		texturebuffers = new byte[source_count][];
+		int source_id_max = 0;
+
+		for (int i = 0; i < source_count; ++i) {
+			int source_id = map.TileSet.GetSourceId(i);
+			if (source_id > source_id_max) {
+				source_id_max = source_id;
+			}
+		}
+
+		remap_id_2_index = new int[source_id_max + 1];
+
+		for (int i = 0; i < source_count; ++i)
+		{
+			int source_id = map.TileSet.GetSourceId(i);
+			remap_id_2_index[source_id] = i;
+			TileSetAtlasSource source = (TileSetAtlasSource)map.TileSet.GetSource(source_id);
+
+			if (source != null && source.Texture != null) {
+				texturebuffers[i] = source.Texture.GetImage().GetData();
+			}
+		}
+
+		// texturebuffers.
 		renderingMethod = (string)ProjectSettings.GetSetting("rendering/renderer/rendering_method");
 		GD.Print("Using rendering method: ", renderingMethod);
 
@@ -84,41 +111,16 @@ public partial class PerspectiveView : Godot.Sprite2D
 		RenderWalls();
 	}
 
-	private Vector3[] ToColorArray(byte[] bytes)
-	{
-		var colors = new Vector3[bytes.Length / 3];
-
-		for (int i = 0; i < bytes.Length; i += 3)
-		{
-			var r = bytes[i];
-			var g = bytes[i + 1];
-			var b = bytes[i + 2];
-
-			// Create a Vector3 with the color values
-			colors[i / 3] = new Vector3(r, g, b);
-		}
-
-		return colors;
-	}
-
-	private Vector3[] GetTextureData(int tileId)
-	{
-		if (!texturebuffers.ContainsKey(tileId))
-		{
-			var source = (TileSetAtlasSource)map.TileSet.GetSource(tileId);
-			var bytes = source.Texture.GetImage().GetData();
-			texturebuffers[tileId] = ToColorArray(bytes);
-		}
-
-		return texturebuffers[tileId];
-	}
-
 	private void RenderWalls()
 	{
 		// Get player data
 		Vector2 playerPosition = (Vector2)player.Get("global_position");
-		Vector2 playerDir = new Vector2((float)player.Get("dirX"), (float)player.Get("dirY"));
-		Vector2 playerPlane = new Vector2((float)player.Get("planeX"), (float)player.Get("planeY"));
+		float playerX = playerPosition.X;
+		float playerY = playerPosition.Y;
+		float dirX = (float)player.Get("dirX");
+		float dirY = (float)player.Get("dirY");
+		float planeX = (float)player.Get("planeX");
+		float planeY = (float)player.Get("planeY");
 
 		// Map the player's position in the global space.
 		float posX = playerPosition.X / 64.0f;
@@ -129,8 +131,8 @@ public partial class PerspectiveView : Godot.Sprite2D
 		{
 			// Set up perspective camera plane and raycast direction.
 			float cameraX = 2.0f * x / screenwidth - 1.0f;
-			float rayDirX = playerDir.X + playerPlane.X * cameraX;
-			float rayDirY = playerDir.Y + playerPlane.Y * cameraX;
+			float rayDirX = dirX + planeX * cameraX;
+			float rayDirY = dirY + planeY * cameraX;
 
 			// The player's map coordinate, based on global coordinate.
 			Vector2I localToMap = map.LocalToMap(playerPosition);
@@ -225,7 +227,7 @@ public partial class PerspectiveView : Godot.Sprite2D
 			if (side == 1 && rayDirY < 0) texX = texWidth - texX - 1;
 
 			int source_id = map.GetCellSourceId(texNum);
-			Vector3[] tex = GetTextureData(source_id);
+			int source_index = remap_id_2_index[source_id];
 
 			// How much to increase the texture coordinate per screen pixel
 			float step = 1.0f * texHeight / lineHeight;
@@ -236,15 +238,13 @@ public partial class PerspectiveView : Godot.Sprite2D
 			{
 				int texY = (int)texPos & (texHeight - 1);
 				texPos += step;
-				int texIndex = texX + texY * texHeight;
-				Vector3 color = tex[texIndex];
-
-				if (side == 1) color *= 0.5f; // Darken the color for y-sides.
+				int texIndex = (texX + texY * texHeight) * 3;
+				int shading = (side == 1) ? 1 : 0;
 
 				int screenIndex = (x + y * screenwidth) * 4;
-				screenbuffer[screenIndex] = (byte)(color.X);
-				screenbuffer[screenIndex + 1] = (byte)(color.Y);
-				screenbuffer[screenIndex + 2] = (byte)(color.Z);
+				screenbuffer[screenIndex] = (byte)(texturebuffers[source_index][texIndex] >> shading);
+				screenbuffer[screenIndex + 1] = (byte)(texturebuffers[source_index][texIndex + 1] >> shading);
+				screenbuffer[screenIndex + 2] = (byte)(texturebuffers[source_index][texIndex + 2] >> shading);
 				screenbuffer[screenIndex + 3] = 255;
 			}
 		}
